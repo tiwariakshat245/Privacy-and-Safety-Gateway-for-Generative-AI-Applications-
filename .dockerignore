@@ -1,0 +1,7 @@
+.git
+.venv
+__pycache__
+*.pyc
+audit.jsonl
+policies.json
+sentinel-github-upload.zip
