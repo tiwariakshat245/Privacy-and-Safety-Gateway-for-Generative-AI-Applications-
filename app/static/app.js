@@ -4,10 +4,6 @@ const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:8000' 
 const api = path => `${API_BASE}${path}`;
 let selectedRecommendation = null;
 let currentSlide = 1;
-let autoPlaying = true;
-let slideStartedAt = Date.now();
-let slideHovered = false;
-const slideDuration = 7000;
 
 function showSlide(number) {
   currentSlide = number < 1 ? 3 : number > 3 ? 1 : number;
@@ -15,7 +11,6 @@ function showSlide(number) {
   const indicator = $('slide-current');
   if (indicator) indicator.textContent = String(currentSlide).padStart(2, '0');
   document.querySelectorAll('.slide-dot').forEach(dot => dot.classList.toggle('active', Number(dot.dataset.goSlide) === currentSlide));
-  slideStartedAt = Date.now();
   document.body.classList.add('deck-ready');
   window.scrollTo({top: 0, behavior: 'smooth'});
 }
@@ -109,15 +104,26 @@ async function loadAudit() {
 }
 document.querySelectorAll('[data-example]').forEach(button => button.onclick = () => { $('prompt').value = button.dataset.example; $('prompt').focus(); });
 $('analyze').onclick = () => submit(false); $('send').onclick = () => submit(true); $('refresh').onclick = loadAudit; loadPolicies(); loadAudit();
-document.querySelectorAll('.slide-next').forEach(button => button.onclick = () => showSlide(currentSlide + 1));
+const heroPrompt = $('hero-prompt');
+const heroPromptError = $('hero-prompt-error');
+const enterGateway = $('enter-gateway');
+if (enterGateway) enterGateway.onclick = () => {
+  const value = heroPrompt?.value.trim() || '';
+  if (!value) {
+    if (heroPromptError) heroPromptError.textContent = 'Add a prompt first to enter the secure gateway.';
+    heroPrompt?.focus();
+    return;
+  }
+  $('prompt').value = value;
+  if (heroPromptError) heroPromptError.textContent = '';
+  showSlide(2);
+  $('prompt').focus();
+};
+if (heroPrompt) heroPrompt.addEventListener('input', () => { if (heroPromptError) heroPromptError.textContent = ''; });
 document.querySelectorAll('.slide-prev').forEach(button => button.onclick = () => showSlide(currentSlide - 1));
+document.querySelectorAll('.slide-next').forEach(button => button.onclick = () => showSlide(currentSlide + 1));
 document.querySelectorAll('.slide-dot').forEach(button => button.onclick = () => showSlide(Number(button.dataset.goSlide)));
 document.querySelectorAll('nav a').forEach(link => link.onclick = event => { event.preventDefault(); showSlide(link.getAttribute('href') === '#workspace' ? 2 : 2); });
 document.addEventListener('keydown', event => { if (event.key === 'ArrowRight') showSlide(currentSlide + 1); if (event.key === 'ArrowLeft') showSlide(currentSlide - 1); });
-const autoplayToggle = $('autoplay-toggle');
-if (autoplayToggle) autoplayToggle.onclick = () => { autoPlaying = !autoPlaying; autoplayToggle.textContent = autoPlaying ? 'Ⅱ' : '▶'; autoplayToggle.setAttribute('aria-label', autoPlaying ? 'Pause slideshow' : 'Play slideshow'); slideStartedAt = Date.now(); };
-document.querySelector('main').addEventListener('mouseenter', () => { slideHovered = true; });
-document.querySelector('main').addEventListener('mouseleave', () => { slideHovered = false; });
 document.querySelectorAll('.slide-content[data-slide="1"], .slide-content[data-slide="3"]').forEach(slide => slide.addEventListener('mousemove', event => { const x = ((event.clientX / window.innerWidth) - .5) * 16; const y = ((event.clientY / window.innerHeight) - .5) * 8; slide.style.backgroundPosition = `calc(50% + ${x}px) calc(50% + ${y}px)`; }));
-setInterval(() => { const progress = Math.min(100, ((Date.now() - slideStartedAt) / slideDuration) * 100); const bar = $('slide-progress'); if (bar) bar.style.width = `${progress}%`; if (autoPlaying && !slideHovered && progress >= 100) showSlide(currentSlide + 1); }, 100);
 showSlide(1);
